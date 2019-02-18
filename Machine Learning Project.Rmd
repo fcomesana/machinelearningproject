@@ -1,0 +1,136 @@
+---
+title: "Machine Learning Project"
+author: "Federico Comesaña"
+date: "17/2/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+library(caret)
+library(randomForest)
+library(readr)
+library(dplyr)
+library(stringr)
+```
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. 
+
+In this project, we will use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+The goal of this project is to predict the manner in which they did the exercise. This is the *classe* variable in the training set. We will use the other variables to predict with. In this report we will describe how we built our model, how we used cross validation, what we think the expected out of sample error is, and why we made the choices we did. We will also use our prediction model to predict 20 different test cases.
+
+
+### Data and model choice
+
+The training data for this project are available [here](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv) and the test dat are available [here](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv). 
+
+More information is available from the website [here](http://groupware.les.inf.puc-rio.br/har) in the section on the Weight Lifting Exercise Dataset.
+
+Participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in 5 different fashions. The variable *classe* represent each one of these levels:  
+
+* exactly according to the specification (Class A)
+* throwing the elbows to the front (Class B)
+* lifting the dumbbell only halfway (Class C)
+* lowering the dumbbell only halfway (Class D)
+* throwing the hips to the front (Class E)
+
+Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes.
+
+We will test a model using random forest algorithms due to the nature of data. We will subsample randomly the training dataset into: 
+
+* subTraining data (75%). It will be used to fit the model.
+* subTesting data (25%. It will be used to test the model.
+
+
+### Loading and cleaning data
+
+We will load the data and set a pseudo-random number generator seed for reproduceability pourposes. In the loading process we will clean the missing values.
+
+```{r}
+set.seed(32)
+
+train <- read_csv("pml-training.csv", na=c("NA","#DIV/0!",""))
+test <- read_csv("pml-testing.csv", na=c("NA","#DIV/0!",""))
+```
+
+From the *train* dataset we will create the 2 partitions, *subTraining* and *subTesting*.
+
+```{r}
+p <- createDataPartition(y = train$classe, 
+                         p = 0.75, 
+                         list=FALSE)
+subTraining <- train[p, ]
+subTesting <- train[-p, ]
+```
+
+We will remove the first 7 columns with descriptive information of the data.
+
+```{r}
+subTraining   <- subTraining[,-c(1:7)]
+subTesting <- subTesting[,-c(1:7)]
+```
+
+We will remove all columns with missing values
+
+```{r}
+subTraining <- subTraining[ , colSums(is.na(subTraining)) == 0]
+subTesting <- subTesting[ , colSums(is.na(subTesting)) == 0]
+```
+
+We will remove all the variables with zero and near zero variation. 
+
+```{r}
+NZV <- nearZeroVar(subTraining, saveMetrics = TRUE)
+NZV <- NZV[NZV$zeroVar == FALSE & NZV$nzv == FALSE, ]
+keep <- row.names(NZV)
+
+subTraining <- subTraining[,keep]
+subTesting <- subTesting[,keep]
+
+```
+
+### Model training
+
+We will fit our model on the training dataset and then we will cross validate te prediction accuracy with the testing dataset.
+
+```{r cache = TRUE}
+modFit <- randomForest(I(as.factor(classe)) ~ ., data = subTraining)
+```
+
+These are the results of the random forest model prediction of the subTraining dataset.
+
+```{r}
+resultsModel <- predict(modFit, subTraining)
+print(confusionMatrix(resultsModel, as.factor(subTraining$classe)))
+```
+We will predict the classe variable in the subTesting dataset for cross-validation purposes.
+
+```{r}
+testingModel <- predict(modFit, subTesting)
+print(confusionMatrix(testingModel, as.factor(subTesting$classe)))
+```
+
+The cross validation accuracy of our model is 99.6% and the out-of-sample error is therefore 0.4%. The conclution is that the random forest has an excellent prediction power of the way barbell lifts was performed.
+
+### Test set
+
+We predict the classe of the original test set.
+
+```{r}
+testingResults <- predict(modFit, test)
+print(testingResults)
+```
+
+We save the output of the predictions as individual files:
+
+```{r}
+testingResults <- as.character(testingResults)
+
+for (i in 1:length(testingResults)) {
+    write_lines(testingResults[i], str_c("problem_id_", i, ".txt"))
+}
+```

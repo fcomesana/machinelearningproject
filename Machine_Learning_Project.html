@@ -324,12 +324,6 @@ print(testingResults)</code></pre>
 <pre><code>##  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 
 ##  B  A  B  A  A  E  D  B  A  A  B  C  B  A  E  E  A  B  B  B 
 ## Levels: A B C D E</code></pre>
-<p>We save the output of the predictions as individual files:</p>
-<pre class="r"><code>testingResults &lt;- as.character(testingResults)
-
-for (i in 1:length(testingResults)) {
-    write_lines(testingResults[i], str_c(&quot;problem_id_&quot;, i, &quot;.txt&quot;))
-}</code></pre>
 </div>
 </div>
 

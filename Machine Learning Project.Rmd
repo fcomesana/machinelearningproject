@@ -124,13 +124,3 @@ We predict the classe of the original test set.
 testingResults <- predict(modFit, test)
 print(testingResults)
 ```
-
-We save the output of the predictions as individual files:
-
-```{r}
-testingResults <- as.character(testingResults)
-
-for (i in 1:length(testingResults)) {
-    write_lines(testingResults[i], str_c("problem_id_", i, ".txt"))
-}
-```
